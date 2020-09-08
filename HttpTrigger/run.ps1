@@ -70,17 +70,12 @@ Write-Host "Managedby : " $Request.Body.managedby
 
 [String]$ProjectName = $Request.Body.projectname.Replace(' ', '').ToLower()
 
-If($Request.Body.environment -like "Production"){
-    $Environment = "prod"
-}
-If($Request.Body.environment -like "Testing"){
-    $Environment = "test"
-}
-If($Request.Body.environment -like "Development"){
-    $Environment = "dev"
-}
-If($Request.Body.environment -like "Sandbox"){
-    $Environment = "sbox"
+switch ($Request.Body.environment) {
+    "Production" {$Environment = "prod";break}
+    "Testing" {$Environment = "test";break}
+    "Development" {$Environment = "dev";break}
+    "Sandbox" {$Environment = "sbox";break}
+    Default {$Environment = "sbox";break}
 }
 
 # Build SubscriptionName
@@ -101,14 +96,18 @@ else{
 # Get Object ID of the Managed Service Identity/Service Principal  
 $EnrollmentId = (Get-AzEnrollmentAccount).ObjectId
 
-# Create Subscription 
-$NewSubscription = New-AzSubscription -OfferType $OfferType -Name $SubscriptionName -EnrollmentAccountObjectId $EnrollmentId -OwnerSignInName $Request.Body.owner
+# Create Subscription
+try {
+    $NewSubscription = New-AzSubscription -OfferType $OfferType -Name $SubscriptionName -EnrollmentAccountObjectId $EnrollmentId -OwnerSignInName $Request.Body.owner
+    # Wait for the subscription to be created 
+    Start-Sleep -Seconds 10
 
-# Wait for the subscription to be created 
-Start-Sleep -Seconds 10
-
-#Log Subscription Details
-Write-Output "New subscription:" $NewSubscription | ConvertTo-Json | Write-Output
+    #Log Subscription Details
+    Write-Output "New subscription:" $NewSubscription | ConvertTo-Json | Write-Output
+}
+catch {
+    Write-Output "Unable to create requested subscription $SubscriptionName"
+}
 
 #
 ##
@@ -118,10 +117,10 @@ Write-Output "New subscription:" $NewSubscription | ConvertTo-Json | Write-Outpu
 
 # Get created subscription  
 
-$consistent = $false
+$script:consistent = $true
     $loops = 0
 
-    while (-not $consistent) {
+    until ($script:consistent) {
         $subscription = $null
         try {
             $Subscription = Get-AzSubscription -SubscriptionName $SubscriptionName
@@ -135,7 +134,7 @@ $consistent = $false
             Start-Sleep -Seconds 1
         }
         if ($null -ne $subscription) {
-            $consistent = $true
+            $script:consistent = $true
         }
         $loops++
     }
