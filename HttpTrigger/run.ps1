@@ -101,7 +101,6 @@ try {
     $NewSubscription = New-AzSubscription -OfferType $OfferType -Name $SubscriptionName -EnrollmentAccountObjectId $EnrollmentId -OwnerSignInName $Request.Body.owner
     # Wait for the subscription to be created 
     Start-Sleep -Seconds 10
-
     #Log Subscription Details
     Write-Output "New subscription:" $NewSubscription | ConvertTo-Json | Write-Output
 }
